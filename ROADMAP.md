@@ -1,25 +1,16 @@
 # Roadmap
 
-## Phase 1: Interface Scaffold (DONE)
-Define all interfaces, types, structs, and enums across 8 packages. No implementations. Validate that the type system compiles and packages compose correctly.
+## Phase 1: Kernel (DONE)
+Single `chakra` package. Primitive, Envelope, Store, Gate, DeltaGate, ScopedStore, Registry with sync and async invocation. ~505 lines. Compiles clean.
 
-## Phase 2: Architecture Validation
-Model concrete agent scenarios against the scaffold. Test how real problems compose against the Primitive interface. Identify gaps or friction in the algebra.
+## Phase 2: First Tools + Agent
+4 SWE-bench tool primitives + ReActAgent + BudgetGate + NamespaceGate + reflexivity (run:hints). Run on 10 instances. Read the hints.
 
-## Phase 3: Core Implementation
-Implement the foundational runtime: EventBus routing, ResourceGovernor budget enforcement, PrimitiveRegistry with hot-swapping, and AgentInstance goroutine loop.
+## Phase 3: Hint-Driven Iteration
+The hints from Phase 2 tell you what to build. Not speculation — evidence from the running system. Add one thing at a time. Consult `docs/v0/` reference map when hitting specific pain.
 
-## Phase 4: Memory Hierarchy
-Implement the L1-L5 memory stack with retrieval escalation and context window management.
-
-## Phase 5: Type System
-Integrate JSON Schema validation for structural types. Build semantic compatibility checking (likely LLM-backed).
-
-## Phase 6: Coordination Patterns
-Implement pipeline and mesh coordination patterns (doc 09). Add consolidator background process.
-
-## Phase 7: JIT Crystallization
-Reduce stable agent patterns to direct code paths for performance (doc 10).
+## Phase 4: External Agent Integration
+Register Claude Code / Codex as Primitives. Gate with budget and namespace enforcement. Use for tasks where local tools aren't sufficient. Track when delegation happens and why — the hints should tell you how to reduce it over time.
 
 ## Long-term Vision
-A system where agents can be composed, swapped, evolved, and reasoned about with the same rigor as algebraic expressions — while maintaining hard safety guarantees through the bedrock/governor layers.
+A platform where a developer can write a domain-specific agent in an afternoon, run it on real problems, and have the agent tell them what to build next. Agents built this way are cheap to run (open models), easy to understand (you own the for loop), fast to iterate (hints drive development), and composable (any external agent is a Primitive). The model gap versus frontier systems shrinks when the tooling is tight — and the hints tell you exactly how to tighten it.

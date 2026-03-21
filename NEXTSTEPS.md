@@ -2,22 +2,29 @@
 
 ## Immediate
 
-- [ ] Model concrete problems against the interface scaffold to validate architecture self-organization
-- [ ] Write `integration_test.go` — end-to-end test exercising type composition across packages
-- [ ] Decide on JSON Schema validation library (`santhosh-tekuri/jsonschema/v6` proposed in plan, only needed in `types/`)
+- [ ] Write kernel tests (`chakra_test.go`, `registry_test.go`, `store_test.go`)
+  - Test ScopedStore isolation and delta merging
+  - Test DeltaGate rejection (namespace enforcement)
+  - Test InvokeAsync with cancellation and write observation
+- [ ] Build 4 SWE-bench tool primitives: ReadFile, SearchCode, EditFile, RunTests
+- [ ] Build ReActAgent primitive (for loop that captures a Registry)
+- [ ] Build BudgetGate (global gate for budget enforcement)
+- [ ] Build NamespaceGate (DeltaGate for store write namespace enforcement)
+- [ ] Add reflexivity: after each tool call, write Hint to `run:hints` in Store
 
-## Implementation (after validation)
+## Run
 
-- [ ] Implement `EventBus.Route` with priority channel routing
-- [ ] Implement `ResourceGovernor.Execute` with budget checks and degradation
-- [ ] Implement `PrimitiveRegistry` with type-checked `Swap` and bedrock protection
-- [ ] Implement `AgentInstance.Run` with two-phase select pattern
-- [ ] Implement `ContextWindow` as L1 memory store
-- [ ] Implement `RetrievalStack` with level escalation
+- [ ] Run on 10 SWE-bench Lite instances
+- [ ] Read the hints — they tell you what to build next
 
-## Future
+## Design Considerations (Not Urgent)
 
-- [ ] Consolidator — background goroutine for memory consolidation between sessions
-- [ ] JIT crystallization — reducing stable agent patterns to direct code (doc 10)
-- [ ] Profiling vs evals framework (doc 16)
-- [ ] Model selection integration (doc 17)
+- [ ] Runtime topology traceability — Connect/Disconnect calls should be observable
+- [ ] Store write atomicity — batch merge for concurrent async children (if needed after real use)
+- [ ] Update examples to use ConnectWithDelta for namespace enforcement
+
+## After Running On Real Problems
+
+- [ ] Let the hints and traces tell you what's missing
+- [ ] Consult `docs/v0/` reference map when you hit specific pain
+- [ ] Add things one at a time, justified by actual failures

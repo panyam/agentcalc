@@ -1,61 +1,107 @@
 # Architecture
 
-Chakra implements a closed algebraic system for agent composition. Every component — agents, tools, memory stores, evaluators, type checkers, governors — is an instance of a single `Primitive` interface.
+Chakra implements a minimal agent calculus kernel. ~505 lines, one package, four concepts.
 
-## Package Structure
+## The Kernel
 
-| Package | Purpose | Dependencies |
-|---------|---------|-------------|
-| `primitive/` | Core `Primitive` interface, `Input`/`Output`, `State`, sentinel errors | none |
-| `envelope/` | Immutable `Envelope` threaded through calls, `Budget` limits | `primitive` |
-| `governor/` | `ResourceGovernor` wraps primitives with budget enforcement | `primitive`, `envelope` |
-| `event/` | `Event` type, `EventBus` with 4 priority channels | none |
-| `types/` | `DualType` (structural + semantic), `TypeChecker` interface | `primitive` |
-| `registry/` | `PrimitiveRegistry` with type-checked hot-swapping, bedrock protection | `primitive`, `types` |
-| `agent/` | `AgentClass` (static spec), `AgentInstance` (runtime goroutine) | `primitive`, `envelope`, `event`, `memory`, `governor`, `types` |
-| `memory/` | `MemoryLevel` L1-L5 hierarchy, `MemoryStore` interface, `ContextWindow` | `primitive` |
+```
+Primitive    — universal interface: Meta() + Run()
+Envelope     — execution context: Depth, Budget, Trace, Done, Store
+Store        — shared state: Get, Set, Update, Watch
+Gate         — pre-invocation edge validation
+DeltaGate    — post-invocation store write validation
+Registry     — wiring + dispatch: Register, Connect, ConnectWithDelta, Invoke, InvokeAsync
+ScopedStore  — isolated store per invocation (trust boundary mechanism)
+```
 
 ## Core Design Decisions
 
 | Decision | Choice | Rationale |
 |----------|--------|-----------|
-| Universal type | `Primitive` interface | Closure — everything composes uniformly |
-| Input/Output | `any` wrapper, not generics | Heterogeneous composition; generics force monomorphization |
-| Envelope | Immutable (With* returns copy) | Prevents child calls from corrupting parent state |
-| State serialization | `json.RawMessage` | Each primitive owns its checkpoint format |
-| Agent concurrency | goroutine per instance | Go's goroutines are cheap (4KB), channels for communication |
-| Event priority | Two-phase select | Go select doesn't guarantee priority ordering |
-| Bedrock enforcement | Set of IDs in registry | Simple O(1) check, clear error on swap attempt |
-| No third-party deps in core | stdlib only | Core must be stable and dependency-free |
+| Universal type | `Primitive` interface (2 methods) | Closure — everything composes uniformly |
+| I/O type | `Message{Payload any, Schema string}` | Single type for input and output; schema is a label, not enforced |
+| Metadata | `Meta{ID, Description, Reversible}` | 3 fields. Description is NL "type". Reversible is the one safety flag. |
+| Cancellation | `Envelope.Done` channel | This IS the governor. No separate ResourceGovernor. |
+| Budget | `Budget.Exhausted()` check | Flat struct with MaxDepth/MaxCost/MaxIter. Policy is user-space. |
+| Topology | `Registry.Connect/Disconnect` | Directed edges with gates. Who calls Connect is not kernel's concern. |
+| State sharing | `Store` interface (4 methods) | Search is a Primitive, not a Store method. |
+| Trust boundary | ScopedStore + DeltaGate | Every Invoke isolates writes. DeltaGates validate before merge. The for loop is the only trusted writer. |
+| Events | `Store.Watch(key)` | No event bus. Events are store keys. Key names are domain decisions. |
+| Async | `InvokeAsync` → `AsyncHandle` | Per-child cancellation, live write observation, result channel. Primitive doesn't know it's async. |
+| Single package | No sub-packages | Kernel is small enough. No internal dependency management needed. |
 
-## Concurrency Model
-
-```
-Main goroutine:       orchestrator / pipeline coordinator
-Per-agent goroutine:  each AgentInstance.Run()
-EventBus goroutine:   routing loop, always running
-Consolidator:         background goroutine, runs between sessions
-```
-
-Agent-to-agent communication happens only through EventBus channels. No shared mutable state between instances except read-only class-level memory.
-
-## Layer Model
+## Invocation Flow
 
 ```
-Layer 0:  Bedrock          — fixed, human-authored, never touched by system
-Layer 1:  Resource Governor — fixed limits (cost/depth/time)
-Layer 2:  Evaluators        — stable goals defining "good"
-Layer 3:  Primitive Graph   — generatable, hot-swappable, evolvable
+Registry.Invoke(ctx, caller, target, msg, env)
+  │
+  ├── Check: cancellation, budget, depth
+  ├── Look up target primitive and edge
+  ├── Run pre-invocation Gates
+  ├── Create ScopedStore (isolated writes)
+  ├── Run primitive.Run() — writes land in scope
+  ├── Run DeltaGates on the delta
+  ├── Auto-merge approved writes to parent Store
+  └── Return result
+
+Registry.InvokeAsync(ctx, caller, target, msg, env)
+  │
+  ├── Same checks + gate prep (synchronous)
+  ├── Create ScopedStore with observation channel
+  ├── Create per-child Done channel
+  ├── Launch goroutine → invokeRun
+  └── Return AsyncHandle {Result, Writes, Done}
 ```
 
-Power comes from Layer 3. Safety comes from Layers 0–2.
+## Trust Model
 
-## Design Docs Reference
+The agent's for loop is the only trust boundary. The kernel makes discipline possible and auditable, not automatic.
 
-Full theory in `01-overview.md` through `17-model-selection.md`. Key docs:
-- `02-primitive-algebra.md` — the type system foundation
-- `06-type-system.md` — dual structural + semantic types
-- `07-resource-governor.md` — budget enforcement
-- `08-reactivity-layer.md` — event bus and interrupts
-- `11-classes-and-instances.md` — agent lifecycle
-- `14-vm-design-go.md` — Go VM concrete interface sketches
+- **Primitives return Messages.** They write to their ScopedStore, never to the parent directly.
+- **The for loop writes directly to env.Store.** It is trusted developer code.
+- **DeltaGates enforce namespace isolation.** A primitive writing to `trusted:goal` is caught — it never reaches the parent.
+- **The adversary is content, not code.** Malicious files/web pages flowing through primitives, not the primitives themselves.
+- **Store.Watch for observation.** Parent can monitor child's scoped writes in real time via InvokeAsync's `Writes` channel.
+
+## The For Loop IS The Agent
+
+Every reasoning pattern is a for loop with different contents:
+
+```
+ReAct:           for !done { think; act; observe }
+Plan→Execute:    plan = make_plan(); for step in plan { execute(step) }
+Critic/Verifier: for !critic_passes { generate; critique }
+Tree of Thought:  for !converged { branch; evaluate; select }
+```
+
+No new primitives for any of these. They are wiring choices and loop body choices.
+
+## Reflexivity
+
+After every tool call, the agent writes a structured hint to the Store about what worked, what didn't, and what tool improvements would help. This makes every run a requirements-gathering session for the next iteration of tools. The agent participates in its own development.
+
+Not a kernel feature — a convention in the for loop using `Store.Update("run:hints", ...)`.
+
+## What Is Deliberately Absent (And Why)
+
+- **NL type system** → user builds as a Gate if needed
+- **Memory hierarchy** → user builds as Primitives + Store
+- **ResourceGovernor** → Envelope.Budget IS the governor
+- **Event bus** → Store.Watch + channels
+- **Agent lifecycle** → an agent is a Primitive that captures a Registry
+- **Topology primitives** → Registry.Connect IS topology
+- **Crystallization** → offline tooling, not kernel
+- **Streaming** → channels passed through Message payload (Go-native)
+- **Coroutines** → goroutines + InvokeAsync (Go-native)
+
+These are real concerns. They are not kernel concerns. See `docs/v0/` reference map for when you hit specific pain.
+
+## Old Design (v0)
+
+Preserved in `v0/` for reference. 8 packages, 710 lines, all interface stubs with panic bodies. Over-designed — solved problems at the wrong layer. The v1 kernel was a rewrite from scratch, not a refactor.
+
+## Design Docs
+
+- `docs/v1/` — current kernel spec and philosophy
+- `docs/v0/` — reference map for when you hit specific pain points
+- `examples/` — developer ergonomics (ReAct, Critic, SWE-bench, Interrupt, Adaptive)
