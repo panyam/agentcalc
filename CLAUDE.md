@@ -36,6 +36,7 @@ Old v0 scaffold (8 packages, 710 lines, all panic stubs) preserved in `v0/` for 
 - **Budget IS the governor.** No separate ResourceGovernor. `env.Budget.Exhausted()` + `env.Done` channel.
 - **Events are just Store keys.** No event bus. `Store.Watch("human:steer")` in a `select`. Key names are domain decisions, not kernel decisions.
 - **Async via InvokeAsync.** Returns `AsyncHandle` with per-child cancellation (`Done`), live write observation (`Writes`), and result channel (`Result`). The primitive doesn't know it's being observed.
+- **Primitives are model-agnostic.** LLM is one kind of Primitive, not the default. NER models, regex extractors, classifiers, SQL queries, statistics functions — all Primitives. Put cost/speed/determinism in `Meta.Description` to guide the LLM toward cheaper tools. Reflexivity hints surface LLM overuse ("I used an LLM for what a regex could do").
 
 ## Trust Model
 

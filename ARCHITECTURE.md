@@ -82,6 +82,16 @@ After every tool call, the agent writes a structured hint to the Store about wha
 
 Not a kernel feature — a convention in the for loop using `Store.Update("run:hints", ...)`.
 
+## Model-Agnostic Primitives
+
+LLM is one kind of Primitive, not the default. The `Primitive` interface says nothing about LLMs — `Run` takes bytes in, returns bytes out. NER models, regex extractors, classifiers, SQL queries, statistics functions, tree-sitter parsers — all Primitives. Register, connect, invoke identically.
+
+**How the system biases toward cheap tools:**
+- `Meta.Description` guides tool selection — include cost/speed/determinism (e.g. "extract entities — deterministic, 1ms, free")
+- **Reflexivity hints** surface LLM overuse — "I used an LLM for what a regex could do"
+- **Pipeline pattern** — cheap deterministic tools pre-digest data, LLM only reasons over structured output
+- **PreferCheapGate** — a Gate that blocks LLM calls when a cheaper connected primitive can handle the task
+
 ## What Is Deliberately Absent (And Why)
 
 - **NL type system** → user builds as a Gate if needed
