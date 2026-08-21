@@ -5,7 +5,7 @@ package memory
 import (
 	"context"
 
-	"github.com/panyam/chakra/primitive"
+	"github.com/panyam/agentcalc/primitive"
 )
 
 // MemoryLevel represents a tier in the memory hierarchy.

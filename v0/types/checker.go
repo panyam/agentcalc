@@ -1,6 +1,6 @@
 package types
 
-import "github.com/panyam/chakra/primitive"
+import "github.com/panyam/agentcalc/primitive"
 
 // TypeChecker validates compatibility between primitives for hot-swapping.
 type TypeChecker interface {

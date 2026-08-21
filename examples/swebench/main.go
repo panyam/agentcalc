@@ -18,7 +18,7 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/panyam/chakra"
+	"github.com/panyam/agentcalc"
 )
 
 // ============================================================

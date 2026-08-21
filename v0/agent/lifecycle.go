@@ -3,7 +3,7 @@ package agent
 import (
 	"context"
 
-	"github.com/panyam/chakra/primitive"
+	"github.com/panyam/agentcalc/primitive"
 )
 
 // Checkpoint captures the agent's full state for later resumption.

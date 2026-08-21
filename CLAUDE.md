@@ -2,7 +2,7 @@
 
 ## Quick Reference
 
-- **Module**: `github.com/panyam/chakra`
+- **Module**: `github.com/panyam/agentcalc`
 - **Go version**: 1.25
 - **Build**: `go build .` (v0/ is archived, not part of the build)
 - **Vet**: `go vet .`

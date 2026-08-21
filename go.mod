@@ -1,3 +1,3 @@
-module github.com/panyam/chakra
+module github.com/panyam/agentcalc
 
 go 1.25

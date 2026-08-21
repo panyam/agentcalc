@@ -5,8 +5,8 @@ package governor
 import (
 	"context"
 
-	"github.com/panyam/chakra/envelope"
-	"github.com/panyam/chakra/primitive"
+	"github.com/panyam/agentcalc/envelope"
+	"github.com/panyam/agentcalc/primitive"
 )
 
 // ResourceGovernor wraps a target Primitive with budget enforcement and

@@ -3,10 +3,10 @@
 package agent
 
 import (
-	"github.com/panyam/chakra/governor"
-	"github.com/panyam/chakra/memory"
-	"github.com/panyam/chakra/primitive"
-	"github.com/panyam/chakra/types"
+	"github.com/panyam/agentcalc/governor"
+	"github.com/panyam/agentcalc/memory"
+	"github.com/panyam/agentcalc/primitive"
+	"github.com/panyam/agentcalc/types"
 )
 
 // AgentClass is the static specification of an agent — its capabilities,

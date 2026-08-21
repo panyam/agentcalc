@@ -5,8 +5,8 @@ package registry
 import (
 	"sync"
 
-	"github.com/panyam/chakra/primitive"
-	"github.com/panyam/chakra/types"
+	"github.com/panyam/agentcalc/primitive"
+	"github.com/panyam/agentcalc/types"
 )
 
 // RegisterOption is a functional option for configuring registration behavior.

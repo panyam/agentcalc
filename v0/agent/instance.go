@@ -3,10 +3,10 @@ package agent
 import (
 	"context"
 
-	"github.com/panyam/chakra/envelope"
-	"github.com/panyam/chakra/event"
-	"github.com/panyam/chakra/memory"
-	"github.com/panyam/chakra/primitive"
+	"github.com/panyam/agentcalc/envelope"
+	"github.com/panyam/agentcalc/event"
+	"github.com/panyam/agentcalc/memory"
+	"github.com/panyam/agentcalc/primitive"
 )
 
 // Task represents a unit of work assigned to an agent instance.

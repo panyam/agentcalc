@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/panyam/chakra"
+	"github.com/panyam/agentcalc"
 )
 
 // --- The critic primitive ---

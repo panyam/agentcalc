@@ -23,7 +23,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/panyam/chakra"
+	"github.com/panyam/agentcalc"
 )
 
 // ============================================================

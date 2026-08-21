@@ -6,7 +6,7 @@ package envelope
 import (
 	"time"
 
-	"github.com/panyam/chakra/primitive"
+	"github.com/panyam/agentcalc/primitive"
 )
 
 // Envelope is threaded through every Primitive.Execute call. It is immutable:
