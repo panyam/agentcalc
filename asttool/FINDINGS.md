@@ -128,11 +128,81 @@ Structural addressing (by node kind + name) is stable across edits — "the func
 
 ---
 
-## 4. Next Steps
+## 4. Error Resilience: The Compilation Requirement Gap
+
+### The problem agents actually hit
+
+Agents need refactoring tools **most when code is broken** — mid-refactor, missing deps, partial rewrites. But the tools that do it correctly require the code to compile.
+
+### Existing Go tools, ranked by error tolerance
+
+| Tool | Needs types? | Needs parse? | Broken code? | Maintained? |
+|------|-------------|-------------|-------------|-------------|
+| `gorename` | Yes | Yes | No | **Deprecated** (v0.1.0-deprecated) |
+| `gopls rename` | Partially | Partially | Moderate | Yes (v0.20.0) |
+| `rf` (rsc.io/rf) | Yes | Yes | No | Yes (experimental) |
+| `gofmt -r` | No | Yes | No | Yes (ships with Go) |
+| `eg` | Yes | Yes | No | Stale |
+| **`ast-grep`** | No | Tolerant | **Yes** | Yes (actively developed) |
+| `comby` | No | No | **Yes** | **Dying** (Homebrew deprecated) |
+| `fastmod` | No | No | **Yes** | Yes |
+
+### The spectrum
+
+```
+sed/regex          — works on broken code, no semantic awareness
+tree-sitter/CST    — works on broken code, structural awareness  ← THE GAP
+go/ast (no types)  — needs valid syntax, structural awareness
+gopls/gorename     — needs full typecheck, full semantic awareness
+```
+
+### Key findings
+
+- **`gopls rename`** is better than expected — it succeeds on isolated parse/type errors. But [issue #71908](https://github.com/golang/go/issues/71908) (Feb 2025) reports it fails "multiple times per day" during active development with cascading errors across packages.
+- **`ast-grep`** (tree-sitter based, Rust) is the strongest option for broken code. Understands tree structure (won't match inside strings), tolerates parse errors via tree-sitter's error recovery. Not type-aware, so renames are purely structural.
+- **`comby`** was the other structural option but is dying — Homebrew deprecated, depends on EOL `pcre`.
+- **`gofmt -r`** requires valid syntax and only handles expression-level rewrites. Not useful for renames.
+- **`rf`** is powerful (mv, add, rm for functions/types/fields) but requires clean compilation. Experimental, maintained by Russ Cox.
+
+### Implication for asttool
+
+The gap between "regex on text" and "requires compilation" is exactly where tree-sitter sits. An agent-facing edit tool built on tree-sitter would:
+1. Work on broken code (error-recovering parse)
+2. Have structural awareness (won't corrupt strings/comments)
+3. Be stable across edits (node kind + name addressing doesn't shift)
+4. Not require the full Go toolchain to be functional
+
+`ast-grep` already exists in this space and is worth evaluating as a foundation rather than building from scratch.
+
+---
+
+## 5. Go tree-sitter Grammar Gotcha: `identifier` vs `type_identifier`
+
+Go's tree-sitter grammar splits what `go/ast` treats as a single `*ast.Ident` into two distinct node kinds:
+
+| Node kind | Where it appears | Example |
+|-----------|-----------------|---------|
+| `identifier` | Variable names, function names, labels, package names | `func processOrder(...)`, `x := foo` |
+| `type_identifier` | Type annotations, return types, field types, composite literal types | `var m Message`, `func f() Response` |
+| `field_identifier` | Struct field names in literals and selectors | `Response{Body: x}`, `r.Body` |
+
+**Why this matters for agents:**
+- `sg --pattern 'Message'` matches `identifier` nodes only — it will NOT find `Message` used as a type
+- To match types, you must use YAML rules with `kind: type_identifier` and `regex` instead of `pattern`
+- `field_identifier` separation is actually helpful — it means qualify/unqualify rules naturally skip struct field names without needing the `isStructFieldName` check that our Go tool needed
+
+**This is a tree-sitter design decision, not an ast-grep bug.** Tree-sitter grammars are language-specific, and Go's grammar makes this distinction because types and expressions occupy different syntactic positions in Go. Other languages (Python, JS) may not have this split.
+
+See `SG_TEST_CASES.md` for validated patterns that handle both node kinds.
+
+---
+
+## 6. Next Steps
 
 1. **Download SWE-smith trajectories** (76K, Parquet) and compute per-edit token efficiency across SWE-agent's line-range edits. Compare to OpenHands' str_replace edits on the same tasks.
 2. **Build a conversion tool**: take real Edit calls from our logs, convert to equivalent tree-addressed form, compare token counts concretely.
-3. **Prototype the tree-address tool** with tree-sitter and test on a sample of the worst-efficiency edits from our data.
+3. **Evaluate `ast-grep`** as a foundation — test it on broken Go files, measure pattern quality for rename/refactor operations, assess whether it can be wrapped as an MCP tool for agents.
+4. **Prototype the tree-address tool** with tree-sitter (or ast-grep) and test on a sample of the worst-efficiency edits from our data.
 
 ---
 
