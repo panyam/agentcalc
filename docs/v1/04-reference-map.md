@@ -54,6 +54,20 @@ This file is a lookup table: when you hit a specific pain in the running system,
 
 ---
 
+**"My long-horizon agent is expensive and I suspect prompt-cache misses"**
+→ See docs/v1/06-open-design-questions.md, Q1.
+→ Context feeding a model should be append-only. Store mutation on prompt-feeding keys is a cache hazard.
+
+**"I need deterministic replay / audit of what changed, not just who ran"**
+→ See docs/v1/06-open-design-questions.md, Q2.
+→ Trace records who ran. For what-changed, implement Store as an event-log projection (StoreDelta is the hook).
+
+**"The agent produces plausible-but-wrong output and I need to catch it"**
+→ See examples/generator-verifier/ and docs/research/coding-agents-sota.md (Thread 3).
+→ Verification is a for loop (Critic), a Gate (block a bad edge), or a DeltaGate (reject a bad write before merge).
+
+---
+
 ## The Rule For Using This Map
 
 The archive describes where you might go. The running system tells you where you need to go.
